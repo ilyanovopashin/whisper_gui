@@ -8,6 +8,7 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="${PROJECT_ROOT}/.venv"
 PYTHON_MIN_VERSION="3.11"
+PYTHON_MAX_VERSION="3.12"
 BREW_PACKAGES=(ffmpeg yt-dlp)
 START_BACKEND=false
 
@@ -75,30 +76,49 @@ print_step "Installing required Homebrew packages: ${BREW_PACKAGES[*]}"
 brew install "${BREW_PACKAGES[@]}"
 
 # Determine a suitable Python interpreter
-print_step "Locating Python ${PYTHON_MIN_VERSION}+ interpreter"
+print_step "Locating Python interpreter (${PYTHON_MIN_VERSION}–${PYTHON_MAX_VERSION})"
 PYTHON_BIN=""
-if command -v python${PYTHON_MIN_VERSION} >/dev/null 2>&1; then
-  PYTHON_BIN="$(command -v python${PYTHON_MIN_VERSION})"
-elif command -v python3 >/dev/null 2>&1; then
-  PYTHON_BIN="$(command -v python3)"
-fi
+LAST_CHECKED_VERSION=""
+for candidate in python${PYTHON_MAX_VERSION} python${PYTHON_MIN_VERSION} python3; do
+  if command -v "${candidate}" >/dev/null 2>&1; then
+    VERSION_OUTPUT="$(${candidate} -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
+    LAST_CHECKED_VERSION="${VERSION_OUTPUT}"
+    "${candidate}" <<PY >/dev/null 2>&1
+from itertools import zip_longest
+
+def cmp_versions(lhs: str, rhs: str) -> int:
+    def to_int(parts):
+        return [int(p) for p in parts.split('.')]
+    for a, b in zip_longest(to_int(lhs), to_int(rhs), fillvalue=0):
+        if a < b:
+            return -1
+        if a > b:
+            return 1
+    return 0
+
+candidate = "${VERSION_OUTPUT}"
+min_v = "${PYTHON_MIN_VERSION}"
+max_v = "${PYTHON_MAX_VERSION}"
+if cmp_versions(candidate, min_v) < 0 or cmp_versions(candidate, max_v) > 0:
+    raise SystemExit(1)
+PY
+    if [[ $? -eq 0 ]]; then
+      PYTHON_BIN="$(command -v "${candidate}")"
+      break
+    fi
+  fi
+done
 
 if [[ -z "${PYTHON_BIN}" ]]; then
-  print_error "Python ${PYTHON_MIN_VERSION}+ is required. Install it via Homebrew (brew install python@3.11) and rerun the script."
+  if [[ -n "${LAST_CHECKED_VERSION}" ]]; then
+    print_error "Detected Python ${LAST_CHECKED_VERSION}, which is outside the supported range (${PYTHON_MIN_VERSION}–${PYTHON_MAX_VERSION}). Install a supported version via Homebrew (brew install python@3.12) and rerun the script."
+  else
+    print_error "Could not find Python between versions ${PYTHON_MIN_VERSION} and ${PYTHON_MAX_VERSION}. Install a supported version via Homebrew (brew install python@3.12) and rerun the script."
+  fi
   exit 1
 fi
 
 PYTHON_VERSION="$(${PYTHON_BIN} -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
-PYTHON_OK=$(${PYTHON_BIN} - <<PY
-import sys
-min_version = tuple(int(part) for part in "${PYTHON_MIN_VERSION}".split("."))
-print("true" if sys.version_info >= min_version else "false")
-PY
-)
-if [[ "${PYTHON_OK}" != "true" ]]; then
-  print_error "Python ${PYTHON_MIN_VERSION}+ required, but found ${PYTHON_VERSION}. Install a newer Python via Homebrew (brew install python@3.11)."
-  exit 1
-fi
 
 print_step "Using Python interpreter: ${PYTHON_BIN} (${PYTHON_VERSION})"
 
