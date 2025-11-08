@@ -1,0 +1,40 @@
+:root {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--fg-color);
+  background-color: var(--bg-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+:root[data-theme='light'] {
+  --bg-color: #f4f6fb;
+  --card-bg: #ffffff;
+  --fg-color: #20232a;
+  --muted-color: #4a4f63;
+  --accent-color: #5b6cfb;
+  --accent-color-strong: #3d4ae0;
+  --border-color: rgba(32, 35, 42, 0.08);
+}
+
+:root[data-theme='dark'] {
+  --bg-color: #0f1729;
+  --card-bg: #1b2337;
+  --fg-color: #f9fbff;
+  --muted-color: #c3c9d8;
+  --accent-color: #8b9bff;
+  --accent-color-strong: #5c6bf5;
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg-color);
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
