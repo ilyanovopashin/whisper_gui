@@ -83,7 +83,7 @@ for candidate in python${PYTHON_MAX_VERSION} python${PYTHON_MIN_VERSION} python3
   if command -v "${candidate}" >/dev/null 2>&1; then
     VERSION_OUTPUT="$(${candidate} -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
     LAST_CHECKED_VERSION="${VERSION_OUTPUT}"
-    if "${candidate}" <<PY >/dev/null 2>&1
+    "${candidate}" <<PY >/dev/null 2>&1
 from itertools import zip_longest
 
 def cmp_versions(lhs: str, rhs: str) -> int:
@@ -102,7 +102,7 @@ max_v = "${PYTHON_MAX_VERSION}"
 if cmp_versions(candidate, min_v) < 0 or cmp_versions(candidate, max_v) > 0:
     raise SystemExit(1)
 PY
-    then
+    if [[ $? -eq 0 ]]; then
       PYTHON_BIN="$(command -v "${candidate}")"
       break
     fi
